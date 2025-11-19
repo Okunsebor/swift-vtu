@@ -1,42 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Smartphone, 
   Wifi, 
-  CreditCard, 
   History, 
-  ChevronRight, 
   Signal, 
   CheckCircle, 
   Wallet,
   Menu,
   X,
-  Bell
+  Bell,
+  Copy,
+  CreditCard,
+  ChevronRight,
+  User
 } from 'lucide-react';
 
-// Mock Data for "Cheap" Data Plans
+// --- Mock Data ---
 const DATA_PLANS = {
   MTN: [
     { id: 'm1', name: '1GB SME', price: 250, duration: '30 Days' },
     { id: 'm2', name: '2GB SME', price: 500, duration: '30 Days' },
     { id: 'm3', name: '3GB SME', price: 750, duration: '30 Days' },
-    { id: 'm4', name: '5GB SME', price: 1250, duration: '30 Days' },
     { id: 'm5', name: '10GB SME', price: 2500, duration: '30 Days' },
   ],
   AIRTEL: [
     { id: 'a1', name: '750MB Corp', price: 200, duration: '14 Days' },
     { id: 'a2', name: '1.5GB Corp', price: 400, duration: '30 Days' },
     { id: 'a3', name: '3GB Corp', price: 800, duration: '30 Days' },
-    { id: 'a4', name: '5GB Corp', price: 1300, duration: '30 Days' },
   ],
   GLO: [
     { id: 'g1', name: '1GB Gift', price: 240, duration: '14 Days' },
     { id: 'g2', name: '2.5GB Gift', price: 550, duration: '30 Days' },
-    { id: 'g3', name: '5.8GB Gift', price: 1200, duration: '30 Days' },
   ],
   '9MOBILE': [
     { id: 'e1', name: '1GB SME', price: 300, duration: '30 Days' },
     { id: 'e2', name: '2GB SME', price: 600, duration: '30 Days' },
-    { id: 'e3', name: '5GB SME', price: 1500, duration: '30 Days' },
   ]
 };
 
@@ -48,32 +46,43 @@ const NETWORKS = [
 ];
 
 export default function VTUApp() {
-  // State Management
-  const [activeTab, setActiveTab] = useState('data'); // 'data' or 'airtime'
+  // --- State ---
+  const [activeTab, setActiveTab] = useState('data'); 
   const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS[0]);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(15450.00);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showFundModal, setShowFundModal] = useState(false); // New Modal State
+
+  // Mock User Data (In real app, this comes from database)
+  const [user, setUser] = useState({
+    name: "Prof. Okunsebor",
+    walletBalance: 2500.00,
+    phone: "08012345678", // This will be their account number
+    accountBank: "Wema Bank" // Simulated Virtual Bank
+  });
+
   const [transactions, setTransactions] = useState([
     { id: 1, type: 'Data', desc: 'MTN 1GB SME', amount: 250, date: 'Today, 10:23 AM', status: 'Success' },
     { id: 2, type: 'Airtime', desc: 'Airtel VTU', amount: 1000, date: 'Yesterday, 4:15 PM', status: 'Success' },
-    { id: 3, type: 'Data', desc: 'Glo 5.8GB', amount: 1200, date: '18 Nov, 09:00 AM', status: 'Failed' },
   ]);
-  const [showMenu, setShowMenu] = useState(false);
 
-  // Handlers
+  // --- Handlers ---
   const handleNetworkSelect = (network) => {
     setSelectedNetwork(network);
-    setSelectedPlan(''); // Reset plan when network changes
+    setSelectedPlan('');
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    alert("Account number copied!");
   };
 
   const handlePurchase = (e) => {
     e.preventDefault();
-    
-    // Basic Validation
     if (phoneNumber.length < 11) {
       alert("Please enter a valid phone number");
       return;
@@ -83,8 +92,9 @@ export default function VTUApp() {
       ? DATA_PLANS[selectedNetwork.id].find(p => p.id === selectedPlan)?.price || 0
       : parseFloat(amount);
 
-    if (purchaseAmount > walletBalance) {
-      alert("Insufficient wallet balance!");
+    if (purchaseAmount > user.walletBalance) {
+      alert("Insufficient wallet balance! Please fund your wallet.");
+      setShowFundModal(true); // Open fund modal automatically
       return;
     }
 
@@ -94,9 +104,8 @@ export default function VTUApp() {
     setTimeout(() => {
       setLoading(false);
       setSuccess(true);
-      setWalletBalance(prev => prev - purchaseAmount);
+      setUser(prev => ({...prev, walletBalance: prev.walletBalance - purchaseAmount}));
       
-      // Add to history
       const newTx = {
         id: Date.now(),
         type: activeTab === 'data' ? 'Data' : 'Airtime',
@@ -109,7 +118,6 @@ export default function VTUApp() {
       };
       setTransactions([newTx, ...transactions]);
 
-      // Reset Success message after 3 seconds
       setTimeout(() => {
         setSuccess(false);
         setPhoneNumber('');
@@ -120,7 +128,7 @@ export default function VTUApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-800 relative">
       
       {/* --- Header --- */}
       <header className="bg-blue-900 text-white p-4 sticky top-0 z-20 shadow-lg">
@@ -140,35 +148,50 @@ export default function VTUApp() {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto p-4 space-y-6">
+      <main className="max-w-md mx-auto p-4 space-y-6 pb-24">
         
         {/* --- Wallet Card --- */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10"></div>
+        <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -mr-10 -mt-10"></div>
+          
           <div className="relative z-10">
-            <p className="text-blue-200 text-sm mb-1">Wallet Balance</p>
-            <h2 className="text-3xl font-bold">₦{walletBalance.toLocaleString()}</h2>
-            <div className="flex mt-4 space-x-3">
-              <button className="flex-1 bg-white/20 hover:bg-white/30 backdrop-blur-sm py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
-                <Wallet size={16} /> Fund Wallet
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="text-blue-200 text-xs font-medium uppercase tracking-wide">Available Balance</p>
+                <h2 className="text-3xl font-bold mt-1">₦{user.walletBalance.toLocaleString()}</h2>
+              </div>
+              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <Wallet size={20} />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button 
+                onClick={() => setShowFundModal(true)}
+                className="flex-1 bg-white text-blue-900 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-50 transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <CreditCard size={16} /> Fund Wallet
+              </button>
+              <button className="px-4 bg-blue-800/50 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-800 transition backdrop-blur-md border border-blue-500/30">
+                History
               </button>
             </div>
           </div>
         </div>
 
         {/* --- Service Tabs --- */}
-        <div className="bg-white p-1 rounded-xl shadow-sm flex">
+        <div className="bg-white p-1.5 rounded-xl shadow-sm flex border border-gray-100">
           <button 
             onClick={() => setActiveTab('data')}
-            className={`flex-1 py-3 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'data' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'data' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
           >
-            <Wifi size={18} /> Buy Data
+            <Wifi size={18} /> Data
           </button>
           <button 
             onClick={() => setActiveTab('airtime')}
-            className={`flex-1 py-3 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'airtime' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'airtime' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
           >
-            <Smartphone size={18} /> Buy Airtime
+            <Smartphone size={18} /> Airtime
           </button>
         </div>
 
@@ -177,8 +200,8 @@ export default function VTUApp() {
           <form onSubmit={handlePurchase} className="space-y-6">
             
             {/* Network Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Network</label>
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Select Network</label>
               <div className="grid grid-cols-4 gap-3">
                 {NETWORKS.map((net) => (
                   <button
@@ -186,14 +209,14 @@ export default function VTUApp() {
                     type="button"
                     onClick={() => handleNetworkSelect(net)}
                     className={`
-                      aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all border-2
-                      ${selectedNetwork.id === net.id ? 'border-blue-600 scale-105 shadow-md' : 'border-transparent bg-gray-50 hover:bg-gray-100'}
+                      aspect-square rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border-2
+                      ${selectedNetwork.id === net.id ? 'border-blue-600 bg-blue-50/50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}
                     `}
                   >
-                    <div className={`w-8 h-8 rounded-full ${net.color} flex items-center justify-center shadow-sm`}>
-                      {/* Simple generic indicator if no logo */}
+                    <div className={`w-8 h-8 rounded-full ${net.color} flex items-center justify-center shadow-sm text-white font-bold text-[10px]`}>
+                      {/* Placeholder for Logo */}
                     </div>
-                    <span className="text-[10px] font-bold">{net.label}</span>
+                    <span className="text-[11px] font-bold text-gray-600">{net.label}</span>
                   </button>
                 ))}
               </div>
@@ -203,49 +226,42 @@ export default function VTUApp() {
             <div className="space-y-4">
               {activeTab === 'data' ? (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Data Plan</label>
-                  <select 
-                    required
-                    value={selectedPlan}
-                    onChange={(e) => setSelectedPlan(e.target.value)}
-                    className="w-full p-3 bg-gray-50 border-none rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none appearance-none"
-                  >
-                    <option value="">Select a plan</option>
-                    {DATA_PLANS[selectedNetwork.id].map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name} - ₦{plan.price} ({plan.duration})
-                      </option>
-                    ))}
-                  </select>
+                  <label className="text-sm font-bold text-gray-700">Data Plan</label>
+                  <div className="relative">
+                    <select 
+                      required
+                      value={selectedPlan}
+                      onChange={(e) => setSelectedPlan(e.target.value)}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none appearance-none font-medium"
+                    >
+                      <option value="">Select a plan</option>
+                      {DATA_PLANS[selectedNetwork.id].map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name} - ₦{plan.price}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-4 pointer-events-none text-gray-400">
+                      <ChevronRight size={16} className="rotate-90" />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Amount (₦)</label>
+                  <label className="text-sm font-bold text-gray-700">Amount (₦)</label>
                   <input 
                     type="number" 
                     required
                     placeholder="100 - 50,000"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full p-3 bg-gray-50 border-none rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none"
+                    className="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none font-medium"
                   />
-                  <div className="flex gap-2">
-                    {[100, 200, 500, 1000].map(amt => (
-                      <button 
-                        key={amt}
-                        type="button"
-                        onClick={() => setAmount(amt)}
-                        className="flex-1 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200 text-gray-600"
-                      >
-                        ₦{amt}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                <label className="text-sm font-bold text-gray-700">Phone Number</label>
                 <div className="relative">
                   <input 
                     type="tel" 
@@ -253,13 +269,10 @@ export default function VTUApp() {
                     maxLength={11}
                     placeholder="080..."
                     value={phoneNumber}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setPhoneNumber(val);
-                    }}
-                    className="w-full p-3 bg-gray-50 border-none rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none pl-10 font-mono"
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                    className="w-full p-3.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none pl-10 font-mono font-medium"
                   />
-                  <Smartphone size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                  <Smartphone size={18} className="absolute left-3 top-4 text-gray-400" />
                 </div>
               </div>
             </div>
@@ -267,16 +280,12 @@ export default function VTUApp() {
             {/* Submit Button */}
             <button 
               type="submit"
-              disabled={loading || (activeTab === 'data' && !selectedPlan) || (activeTab === 'airtime' && !amount) || phoneNumber.length < 11}
-              className={`w-full py-4 rounded-xl font-bold text-white shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all transform active:scale-95
+              disabled={loading}
+              className={`w-full py-4 rounded-xl font-bold text-white shadow-lg shadow-blue-200/50 flex items-center justify-center gap-2 transition-all active:scale-95
                 ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
               `}
             >
-              {loading ? (
-                <>Processing...</>
-              ) : (
-                <>Pay ₦{activeTab === 'data' ? (DATA_PLANS[selectedNetwork.id].find(p => p.id === selectedPlan)?.price || 0) : (amount || 0)}</>
-              )}
+              {loading ? 'Processing...' : 'Purchase Now'}
             </button>
 
           </form>
@@ -285,27 +294,25 @@ export default function VTUApp() {
         {/* --- Transaction History --- */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <History size={18} className="text-blue-600" /> Recent Transactions
-            </h3>
-            <button className="text-xs text-blue-600 font-medium hover:underline">View All</button>
+            <h3 className="font-bold text-gray-800 text-sm">Recent Transactions</h3>
+            <button className="text-xs text-blue-600 font-bold">View All</button>
           </div>
 
           <div className="space-y-2">
             {transactions.map((tx) => (
               <div key={tx.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'Data' ? 'bg-purple-100 text-purple-600' : 'bg-orange-100 text-orange-600'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'Data' ? 'bg-purple-50 text-purple-600' : 'bg-orange-50 text-orange-600'}`}>
                     {tx.type === 'Data' ? <Wifi size={18} /> : <Smartphone size={18} />}
                   </div>
                   <div>
                     <p className="font-bold text-sm text-gray-800">{tx.desc}</p>
-                    <p className="text-xs text-gray-400">{tx.date}</p>
+                    <p className="text-[10px] text-gray-400 font-medium">{tx.date}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-sm text-gray-800">-₦{tx.amount}</p>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${tx.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tx.status === 'Success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                     {tx.status}
                   </span>
                 </div>
@@ -316,31 +323,82 @@ export default function VTUApp() {
 
       </main>
 
+      {/* --- FUND WALLET MODAL (New!) --- */}
+      {showFundModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setShowFundModal(false)}
+          ></div>
+          
+          {/* Modal Content */}
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 relative z-10 animate-in slide-in-from-bottom duration-300">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Fund Wallet</h2>
+              <p className="text-sm text-gray-500 mt-1">Transfer to your dedicated account number below to fund your wallet instantly.</p>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-5 border border-blue-100 mb-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center pb-4 border-b border-blue-200/50">
+                  <span className="text-sm text-gray-500 font-medium">Bank Name</span>
+                  <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-600 rounded-sm"></div> 
+                    {user.accountBank}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center pb-4 border-b border-blue-200/50">
+                  <span className="text-sm text-gray-500 font-medium">Account Name</span>
+                  <span className="text-sm font-bold text-gray-800">SwiftVTU - {user.name.split(' ')[1]}</span>
+                </div>
+
+                <div className="pt-1">
+                  <span className="text-xs text-gray-500 uppercase tracking-wide font-bold block mb-1">Account Number</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-mono font-bold text-blue-900">{user.phone}</span>
+                    <button 
+                      onClick={() => handleCopy(user.phone)}
+                      className="text-blue-600 hover:bg-blue-100 p-2 rounded-lg transition"
+                    >
+                      <Copy size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 p-3 rounded-lg flex gap-3 items-start">
+              <div className="mt-0.5 text-yellow-600">
+                <Signal size={16} />
+              </div>
+              <p className="text-xs text-yellow-800 leading-relaxed">
+                Transfers are automated. Your wallet will be credited immediately after the transfer is successful.
+              </p>
+            </div>
+
+            <button 
+              onClick={() => setShowFundModal(false)}
+              className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl mt-6"
+            >
+              I have made the transfer
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* --- Success Modal --- */}
       {success && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-sm text-center space-y-4 shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle size={40} className="text-green-600" />
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-sm text-center space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <CheckCircle size={32} className="text-green-600" />
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">Success!</h2>
-              <p className="text-gray-500">Your transaction has been processed successfully.</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-              <div className="flex justify-between mb-2">
-                <span>Service</span>
-                <span className="font-bold">{activeTab === 'data' ? 'Data Bundle' : 'Airtime Topup'}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span>Network</span>
-                <span className="font-bold">{selectedNetwork.label}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 mt-2">
-                <span>Amount</span>
-                <span className="font-bold text-gray-900">₦{activeTab === 'data' ? (DATA_PLANS[selectedNetwork.id].find(p => p.id === selectedPlan)?.price || 0) : amount}</span>
-              </div>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Transaction Successful</h2>
+            <p className="text-gray-500 text-sm">Your purchase has been processed.</p>
           </div>
         </div>
       )}
